@@ -48,6 +48,9 @@ public class Database extends SQLiteAssetHelper {
             } while (cursor.moveToNext());
         }
 
+        cursor.close();
+        sqLiteDatabase.close();
+
         return result;
     }
 
@@ -58,7 +61,7 @@ public class Database extends SQLiteAssetHelper {
     }
 
     public void addToCart(Order order) {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getWritableDatabase();
         String query = "SELECT Quantity FROM OrderDetail WHERE ProductId = ?";
         Cursor cursor = db.rawQuery(query, new String[]{order.getProductId()});
 
@@ -114,8 +117,9 @@ public class Database extends SQLiteAssetHelper {
     ////////////////////////////////
 
     public void deleteTable(String table) {
-        SQLiteDatabase sqLiteDatabase = getReadableDatabase();
+        SQLiteDatabase sqLiteDatabase = getWritableDatabase();
         String query = String.format("DELETE FROM %s", table);
         sqLiteDatabase.execSQL(query);
+        sqLiteDatabase.close();
     }
 }

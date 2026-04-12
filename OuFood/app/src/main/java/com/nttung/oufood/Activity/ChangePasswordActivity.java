@@ -17,8 +17,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.nttung.oufood.R;
 import com.nttung.oufood.common.Common;
 
-import io.paperdb.Paper;
-
 public class ChangePasswordActivity extends AppCompatActivity {
     AppCompatButton btn_luu;
     TextInputEditText input_oldPassword, input_newPassword_1, input_newPassword_2;
@@ -66,14 +64,14 @@ public class ChangePasswordActivity extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             user.updatePassword(password_1).addOnCompleteListener(task1 -> {
                                 if (task1.isSuccessful()) {
-                                    Paper.init(ChangePasswordActivity.this);
-                                    Paper.book().write(Common.PASSWORD_KEY, password_1);
                                     Toast.makeText(ChangePasswordActivity.this, "Mật khẩu đã được thay đổi", Toast.LENGTH_SHORT).show();
                                     finish();
                                 } else {
                                     Toast.makeText(ChangePasswordActivity.this, "Đã xảy ra lỗi, hãy thử lại", Toast.LENGTH_SHORT).show();
                                 }
                             });
+                        } else {
+                            Toast.makeText(ChangePasswordActivity.this, "Mật khẩu hiện tại không đúng", Toast.LENGTH_SHORT).show();
                         }
                     });
                 }

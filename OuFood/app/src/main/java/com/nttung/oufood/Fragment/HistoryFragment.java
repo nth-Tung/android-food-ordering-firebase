@@ -16,17 +16,17 @@ import android.widget.TextView;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.nttung.oufood.Adapter.MyOrderAdapter;
 import com.nttung.oufood.Class.Request;
+import com.nttung.oufood.Helper.SessionManager;
 import com.nttung.oufood.R;
 import com.nttung.oufood.common.Common;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import io.paperdb.Paper;
 
 
 public class HistoryFragment extends Fragment {
@@ -37,6 +37,7 @@ public class HistoryFragment extends Fragment {
     TextView null_orders;
 
     DatabaseReference  requestsRef;
+    Query requestsQuery;
     ValueEventListener requestsListener;
 
 
@@ -63,11 +64,22 @@ public class HistoryFragment extends Fragment {
     }
 
     private void loadRequests() {
-        Paper.init(getContext());
+        if (Common.CURRENTUSER == null) {
+            SessionManager.init(requireContext());
+            SessionManager.getCachedUser();
+        }
 
-        String idCURRENTUSER = Common.CURRENTUSER.getIdUser();
+        if (Common.CURRENTUSER == null) {
+            if (getActivity() != null) {
+                android.widget.Toast.makeText(getActivity(), "Bạn cần đăng nhập lại để xem lịch sử đơn hàng!", android.widget.Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
 
-        requestsRef = Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).orderByChild("idCURRENTUSER").equalTo(idCURRENTUSER).getRef();
+        String currentUserId = Common.CURRENTUSER.getIdUser();
+
+        requestsRef = Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS);
+        requestsQuery = requestsRef.orderByChild("idCurrentUser").equalTo(currentUserId);
         requestsListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -76,7 +88,7 @@ public class HistoryFragment extends Fragment {
 
                 for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
                     request = dataSnapshot.getValue(Request.class);
-                    if (!request.getStatus().equals(status)) {
+                    if (request != null && request.getStatus() != null && !request.getStatus().equals(status)) {
                         request.setIdRequest(dataSnapshot.getKey());
                         data.add(request);
                     }
@@ -96,14 +108,14 @@ public class HistoryFragment extends Fragment {
 
             }
         };
-        requestsRef.addValueEventListener(requestsListener);
+        requestsQuery.addValueEventListener(requestsListener);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if(requestsRef!=null && requestsListener!=null){
-            requestsRef.removeEventListener(requestsListener);
+        if(requestsQuery!=null && requestsListener!=null){
+            requestsQuery.removeEventListener(requestsListener);
         }
     }
 }

@@ -17,9 +17,18 @@ import java.util.List;
 public class AddressAdapter extends RecyclerView.Adapter<AddressAdapter.ViewHolder> {
     private List<AnAddress> items;
     private Context context;
+    private final OnAddressActionListener listener;
+    private final boolean selectMode;
 
-    AddressAdapter(List<AnAddress> items) {
+    public interface OnAddressActionListener {
+        void onEdit(int position, AnAddress address);
+        void onSelect(int position, AnAddress address);
+    }
+
+    public AddressAdapter(List<AnAddress> items, boolean selectMode, OnAddressActionListener listener) {
         this.items = items;
+        this.selectMode = selectMode;
+        this.listener = listener;
     }
 
     public void setItems(List<AnAddress> items) {
@@ -40,21 +49,40 @@ public class AddressAdapter extends RecyclerView.Adapter<AddressAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(@NonNull AddressAdapter.ViewHolder holder, int position) {
-        holder.textView_typeAddress.setText(items.get(position).getTypeAddress().toString());
-        holder.textView_address.setText(items.get(position).getAddress());
-        holder.textView_name.setText(items.get(position).getName());
-        holder.textView_phoneNumber.setText(items.get(position).getPhone());
+        AnAddress item = items.get(position);
+        holder.textView_typeAddress.setText(item.getTypeAddress() == null ? "OTHER" : item.getTypeAddress().toString());
+        holder.textView_address.setText(item.getAddress() == null ? "" : item.getAddress());
+        holder.textView_name.setText(item.getName() == null ? "" : item.getName());
+        holder.textView_phoneNumber.setText(item.getPhone() == null ? "" : item.getPhone());
+        holder.textView_update.setText(selectMode ? "Chọn" : "Sửa");
+
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                if (selectMode) {
+                    listener.onSelect(position, item);
+                } else {
+                    listener.onEdit(position, item);
+                }
+            }
+        });
+
         holder.textView_update.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                if (listener != null) {
+                    if (selectMode) {
+                        listener.onSelect(position, item);
+                    } else {
+                        listener.onEdit(position, item);
+                    }
+                }
             }
         });
     }
 
     @Override
     public int getItemCount() {
-        return items.size();
+        return items == null ? 0 : items.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {

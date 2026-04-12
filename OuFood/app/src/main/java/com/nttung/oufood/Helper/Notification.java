@@ -6,7 +6,6 @@ import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -17,11 +16,8 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.ValueEventListener;
 import com.nttung.oufood.Activity.HomeActivity;
 import com.nttung.oufood.Class.Request;
-import com.nttung.oufood.Class.User;
 import com.nttung.oufood.R;
 import com.nttung.oufood.common.Common;
-
-import io.paperdb.Paper;
 
 public class Notification extends BroadcastReceiver {
 
@@ -30,6 +26,10 @@ public class Notification extends BroadcastReceiver {
 
         Intent intent1 = new Intent(context, HomeActivity.class);
         String idRequest = intent.getStringExtra("idRequest");
+        if (idRequest == null || idRequest.trim().isEmpty()) {
+            return;
+        }
+
         intent1.putExtra("flag", "notification");
         TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
         stackBuilder.addNextIntentWithParentStack(intent1);
@@ -45,67 +45,40 @@ public class Notification extends BroadcastReceiver {
                 .setAutoCancel(true);
 
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (notificationManager != null) {
-            if (Common.CURRENTUSER != null) {
-                Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(idRequest).addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        Request request = snapshot.getValue(Request.class);
-                        if (request.getIdCurrentUser().equals(Common.CURRENTUSER.getIdUser())) {
-                            if (request.getStatus().equals("0")) {
-                                notificationManager.notify(Common.NOTIFICATION_ID, builder.build());
-                                Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(idRequest).child("status").setValue("1");
-                            }
-                        }
-                    }
+        if (notificationManager == null) {
+            return;
+        }
 
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
+        String currentUserId = null;
+        if (Common.CURRENTUSER != null) {
+            currentUserId = Common.CURRENTUSER.getIdUser();
+        }
+        if (currentUserId == null && FirebaseAuth.getInstance().getCurrentUser() != null) {
+            currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        }
+        if (currentUserId == null) {
+            return;
+        }
 
-                    }
-                });
-            } else {
-                Paper.init(context);
-                String user = Paper.book().read(Common.USERNAME_KEY);
-                String password = Paper.book().read(Common.PASSWORD_KEY);
-                if (user != null && password != null) {
-                    FirebaseAuth.getInstance().signInWithEmailAndPassword(user, password).addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            String userUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                            Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(idRequest).addValueEventListener(new ValueEventListener() {
-                                @Override
-                                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                    Request request = snapshot.getValue(Request.class);
+        final String finalCurrentUserId = currentUserId;
+        Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(idRequest).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Request request = snapshot.getValue(Request.class);
+                if (request == null || request.getIdCurrentUser() == null || request.getStatus() == null) {
+                    return;
+                }
 
-                                    if (request.getIdCurrentUser().equals(userUid)) {
-                                        if (request.getStatus().equals("0")) {
-                                            Common.FIREBASE_DATABASE.getReference(Common.REF_USERS).child(userUid).addListenerForSingleValueEvent(new ValueEventListener() {
-                                                @Override
-                                                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                                    User user = snapshot.getValue(User.class);
-                                                    Common.CURRENTUSER = user;
-                                                }
-
-                                                @Override
-                                                public void onCancelled(@NonNull DatabaseError error) {
-                                                }
-                                            });
-                                            notificationManager.notify(Common.NOTIFICATION_ID, builder.build());
-                                            Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(idRequest).child("status").setValue("1");
-                                        }
-                                    }
-                                }
-
-                                @Override
-                                public void onCancelled(@NonNull DatabaseError error) {
-
-                                }
-                            });
-                        }
-                    });
+                if (request.getIdCurrentUser().equals(finalCurrentUserId) && request.getStatus().equals("0")) {
+                    notificationManager.notify(Common.NOTIFICATION_ID, builder.build());
+                    Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(idRequest).child("status").setValue("1");
                 }
             }
-        }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+            }
+        });
     }
 
 }

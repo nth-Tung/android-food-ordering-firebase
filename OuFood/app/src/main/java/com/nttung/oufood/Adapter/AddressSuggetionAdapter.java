@@ -18,9 +18,19 @@ public class AddressSuggetionAdapter extends RecyclerView.Adapter<AddressSuggeti
 
     private List<Address> items;
     private Context context;
+    private final OnAddressClickListener onAddressClickListener;
+
+    public interface OnAddressClickListener {
+        void onAddressClick(Address address);
+    }
 
     public AddressSuggetionAdapter(List<Address> items){
-        this.items =items;
+        this(items, null);
+    }
+
+    public AddressSuggetionAdapter(List<Address> items, OnAddressClickListener onAddressClickListener) {
+        this.items = items;
+        this.onAddressClickListener = onAddressClickListener;
     }
 
     @NonNull
@@ -33,12 +43,18 @@ public class AddressSuggetionAdapter extends RecyclerView.Adapter<AddressSuggeti
 
     @Override
     public void onBindViewHolder(@NonNull AddressSuggetionAdapter.ViewHolder holder, int position) {
-        holder.textView_addressSuggestion.setText(items.get(position).getAddressLine(0));
+        Address address = items.get(position);
+        holder.textView_addressSuggestion.setText(address.getAddressLine(0));
+        holder.itemView.setOnClickListener(v -> {
+            if (onAddressClickListener != null) {
+                onAddressClickListener.onAddressClick(address);
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
-        return 0;
+        return items == null ? 0 : items.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {

@@ -105,12 +105,16 @@ public class MenuFragment extends Fragment {
                 List<Category> list = new ArrayList<>();
                 for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
                     Category category1 = dataSnapshot.getValue(Category.class);
-                    category1.setId(dataSnapshot.getKey());
-                    list.add(category1);
+                    if (category1 != null) {
+                        category1.setId(dataSnapshot.getKey());
+                        list.add(category1);
+                    }
                 }
-                Category other = list.get(0);
-                list.remove(other);
-                list.add(other);
+                if (!list.isEmpty()) {
+                    Category other = list.get(0);
+                    list.remove(other);
+                    list.add(other);
+                }
 
                 CategoryAdapter adapter = new CategoryAdapter(list);
                 recyclerView_categories.setLayoutManager(new GridLayoutManager(getActivity(),2, GridLayoutManager.HORIZONTAL,false));
@@ -133,9 +137,13 @@ public class MenuFragment extends Fragment {
                 Food food;
                 for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
                     food = dataSnapshot.getValue(Food.class);
+                    if (food == null) {
+                        continue;
+                    }
                     food.setId(dataSnapshot.getKey());
 
-                    if (food.getDiscount().equals("0")) {
+                    String discount = food.getDiscount();
+                    if (discount == null || discount.equals("0")) {
                         listAllFood.add(food);
                     } else list.add(food);
                 }

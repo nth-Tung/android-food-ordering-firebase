@@ -1,12 +1,14 @@
 package com.nttung.oufood.Activity;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -24,6 +26,7 @@ import com.nttung.oufood.Adapter.AddressSuggetionAdapter;
 import com.nttung.oufood.R;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SelectAddressActivity extends AppCompatActivity {
@@ -42,6 +45,9 @@ public class SelectAddressActivity extends AppCompatActivity {
 
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
 
         recyclerViewAddressSuggestion= findViewById(R.id.recyclerView_addressSuggestion);
 
@@ -58,14 +64,31 @@ public class SelectAddressActivity extends AppCompatActivity {
         locationTask.addOnSuccessListener(new OnSuccessListener<Location>() {
             @Override
             public void onSuccess(Location location) {
+                if (location == null) {
+                    Toast.makeText(SelectAddressActivity.this, "Không lấy được vị trí hiện tại", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 Geocoder geocoder = new Geocoder(SelectAddressActivity.this);
-                List<Address> addresses;
+                List<Address> addresses = new ArrayList<>();
                 try {
                     addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 15);
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    Toast.makeText(SelectAddressActivity.this, "Không lấy được gợi ý địa chỉ", Toast.LENGTH_SHORT).show();
                 }
-                AddressSuggetionAdapter adapter = new AddressSuggetionAdapter(addresses);
+
+                if (addresses == null || addresses.isEmpty()) {
+                    Toast.makeText(SelectAddressActivity.this, "Không có địa chỉ gợi ý", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                AddressSuggetionAdapter adapter = new AddressSuggetionAdapter(addresses, address -> {
+                    Intent data = new Intent();
+                    data.putExtra("selected_address", address.getAddressLine(0));
+                    data.putExtra("selected_ward_path", address.getSubAdminArea());
+                    setResult(RESULT_OK, data);
+                    finish();
+                });
                 recyclerViewAddressSuggestion.setLayoutManager(new LinearLayoutManager(SelectAddressActivity.this,LinearLayoutManager.VERTICAL,false));
                 recyclerViewAddressSuggestion.setAdapter(adapter);
             }
@@ -80,5 +103,18 @@ public class SelectAddressActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == FINE_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                getLastLocation();
+            } else {
+                Toast.makeText(this, "Bạn cần cấp quyền vị trí để gợi ý địa chỉ", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }

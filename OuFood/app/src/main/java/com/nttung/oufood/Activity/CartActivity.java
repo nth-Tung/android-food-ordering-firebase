@@ -5,13 +5,15 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.appcompat.widget.Toolbar;
@@ -30,6 +32,7 @@ import com.nttung.oufood.R;
 import com.nttung.oufood.Helper.AddressType;
 import com.nttung.oufood.common.Common;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CartActivity extends AppCompatActivity {
@@ -42,11 +45,48 @@ public class CartActivity extends AppCompatActivity {
     TextView textViewTotal_a;
     TextView textViewTotal_b;
     TextView textViewNoData;
+    TextView textViewAddressName;
+    TextView textViewAddressPhone;
+    TextView textViewAddressDetail;
+    TextView textViewWardPath;
+    TextView textViewNullAddress;
+    RelativeLayout layoutSelectAddress;
     AppCompatButton buttonOrder;
 
     List<Order> cart;
 
     CartAdapter adapter;
+    private boolean isPlacingOrder = false;
+    private AnAddress selectedAddress;
+
+    private final ActivityResultLauncher<Intent> selectAddressLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) {
+                    return;
+                }
+
+                String address = result.getData().getStringExtra(AddressListActivity.RESULT_ADDRESS);
+                String wardPath = result.getData().getStringExtra(AddressListActivity.RESULT_WARD_PATH);
+                String selectedName = result.getData().getStringExtra(AddressListActivity.RESULT_NAME);
+                String selectedPhone = result.getData().getStringExtra(AddressListActivity.RESULT_PHONE);
+
+                if (address == null || address.trim().isEmpty()) {
+                    return;
+                }
+
+                String name = selectedName != null ? selectedName : (Common.CURRENTUSER != null ? Common.CURRENTUSER.getName() : "");
+                String phone = selectedPhone != null ? selectedPhone : (Common.CURRENTUSER != null ? Common.CURRENTUSER.getPhone() : "");
+                selectedAddress = new AnAddress(
+                        address,
+                        true,
+                        name,
+                        phone,
+                        AddressType.HOME,
+                        new Ward("", "", "", wardPath == null ? "" : wardPath)
+                );
+
+                updateAddressUi();
+            });
 
 
     @Override
@@ -62,6 +102,12 @@ public class CartActivity extends AppCompatActivity {
         textViewTotal_a = findViewById(R.id.total_a);
         textViewTotal_b = findViewById(R.id.total_b);
         textViewNoData = findViewById(R.id.no_data);
+        textViewAddressName = findViewById(R.id.name);
+        textViewAddressPhone = findViewById(R.id.phone);
+        textViewAddressDetail = findViewById(R.id.address);
+        textViewWardPath = findViewById(R.id.ward_getPath);
+        textViewNullAddress = findViewById(R.id.null_address);
+        layoutSelectAddress = findViewById(R.id.layout_select_address);
 
 
         toolbar = findViewById(R.id.toolbar_Cart);
@@ -69,6 +115,13 @@ public class CartActivity extends AppCompatActivity {
 
         recyclerView = findViewById(R.id.recyclerView);
         loadListCart();
+        loadDefaultAddress();
+        updateAddressUi();
+
+        layoutSelectAddress.setOnClickListener(v ->
+            selectAddressLauncher.launch(new Intent(CartActivity.this, AddressListActivity.class)
+                    .putExtra(AddressListActivity.EXTRA_SELECT_MODE, true))
+        );
 
         buttonOrder = findViewById(R.id.btn_order);
         buttonOrder.setOnClickListener(new View.OnClickListener() {
@@ -80,6 +133,21 @@ public class CartActivity extends AppCompatActivity {
 
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
         itemTouchHelper.attachToRecyclerView(recyclerView);
+    }
+
+    private void loadDefaultAddress() {
+        if (Common.CURRENTUSER == null || Common.CURRENTUSER.getAddresses() == null || Common.CURRENTUSER.getAddresses().isEmpty()) {
+            return;
+        }
+
+        AnAddress fallback = Common.CURRENTUSER.getAddresses().get(0);
+        for (AnAddress item : Common.CURRENTUSER.getAddresses()) {
+            if (item != null && item.getIsDefault()) {
+                fallback = item;
+                break;
+            }
+        }
+        selectedAddress = fallback;
     }
 
     public void loadListCart() {
@@ -111,7 +179,10 @@ public class CartActivity extends AppCompatActivity {
             builder.setTitle("Delete a requests?");
             builder.setMessage("Are you sure?");
             builder.setPositiveButton("Yes", (dialog, which) -> {
-                int position = viewHolder.getAdapterPosition();
+                int position = viewHolder.getBindingAdapterPosition();
+                if (position == RecyclerView.NO_POSITION) {
+                    return;
+                }
                 adapter.removeOrder(position);
                 adapter.notifyItemRemoved(position);
                 updateBill();
@@ -124,7 +195,12 @@ public class CartActivity extends AppCompatActivity {
 
             });
 
-            builder.setNegativeButton("No", (dialog, which) -> adapter.notifyItemChanged(viewHolder.getAdapterPosition()));
+            builder.setNegativeButton("No", (dialog, which) -> {
+                int position = viewHolder.getBindingAdapterPosition();
+                if (position != RecyclerView.NO_POSITION) {
+                    adapter.notifyItemChanged(position);
+                }
+            });
 
             builder.show();
         }
@@ -138,22 +214,23 @@ public class CartActivity extends AppCompatActivity {
             double discount = 0; // Giảm giá
             if (!orders.isEmpty()) {
                 for (Order order : orders) {
-                        int price = Integer.parseInt(order.getPrice());
-                        int quantity = Integer.parseInt(order.getQuantity());
+                        int price = parseIntSafe(order.getPrice());
+                        int quantity = parseIntSafe(order.getQuantity());
                         int itemTotal = price * quantity;
                         basketTotal += itemTotal;
 
                         // Thêm logic giảm giá (nếu có discount)
-                        discount += itemTotal * Integer.parseInt(order.getDiscount()) / 100.0; // Ví dụ giảm giá theo %
+                        discount += itemTotal * parseIntSafe(order.getDiscount()) / 100.0; // Ví dụ giảm giá theo %
 
                 }
-                textViewBasketTotal.setText(String.valueOf(basketTotal));
-                textViewDelivery.setText(String.valueOf(delivery));
-                textViewDiscount.setText(String.valueOf(discount));
-                double total = (basketTotal + delivery) - discount;
-                textViewTotal_a.setText(String.valueOf(total));
-                textViewTotal_b.setText(String.valueOf(total));
             }
+
+            textViewBasketTotal.setText(String.valueOf(basketTotal));
+            textViewDelivery.setText(String.valueOf(delivery));
+            textViewDiscount.setText(String.valueOf(discount));
+            double total = (basketTotal + delivery) - discount;
+            textViewTotal_a.setText(String.valueOf(total));
+            textViewTotal_b.setText(String.valueOf(total));
         }
     }
 
@@ -161,14 +238,87 @@ public class CartActivity extends AppCompatActivity {
 //        if (diaChi == null) {
 //            CuteToast.ct(getBaseContext(), "Hãy chọn địa chỉ", Toast.LENGTH_SHORT, CuteToast.WARN, true).show();
 //        } else {
+                if (Common.CURRENTUSER == null || Common.CURRENTUSER.getIdUser() == null) {
+                    Toast.makeText(this, "Phiên đăng nhập không hợp lệ", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (cart == null || cart.isEmpty()) {
+                    Toast.makeText(this, "Giỏ hàng trống", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (selectedAddress == null) {
+                    Toast.makeText(this, "Vui lòng chọn địa chỉ giao hàng", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (isPlacingOrder) {
+                    return;
+                }
+
+                isPlacingOrder = true;
+                buttonOrder.setEnabled(false);
+
+                List<Order> orderSnapshot = new ArrayList<>(cart);
+
                 String id = String.valueOf(System.currentTimeMillis());
-                Request request = new Request(id, Common.CURRENTUSER.getIdUser(), textViewTotal_a.getText().toString(), cart, new AnAddress("OU", false, "Tùng", "0912458796", AddressType.HOME, new Ward("70", "fsf", "fds", "fsd")), "0");
-                scheduleNotification(Common.DELAY_TIME, id);
-                Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(id).setValue(request);
-                database.cleanCart();
-                Toast.makeText(this, "Đặt hàng thành công!", Toast.LENGTH_SHORT).show();
-                finish();
+                Request request = new Request(id, Common.CURRENTUSER.getIdUser(), textViewTotal_a.getText().toString(), orderSnapshot, selectedAddress, "0");
+
+                Common.FIREBASE_DATABASE.getReference(Common.REF_REQUESTS).child(id).setValue(request)
+                        .addOnCompleteListener(task -> {
+                            isPlacingOrder = false;
+                            buttonOrder.setEnabled(true);
+
+                            if (task.isSuccessful()) {
+                                try {
+                                    scheduleNotification(Common.DELAY_TIME, id);
+                                } catch (Exception ignored) {
+                                }
+
+                                database.cleanCart();
+                                cart.clear();
+                                if (adapter != null) {
+                                    adapter.setItems(cart);
+                                    adapter.notifyDataSetChanged();
+                                }
+                                updateBill();
+                                textViewNoData.setVisibility(View.VISIBLE);
+
+                                Toast.makeText(this, "Đặt hàng thành công!", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(this, "Đặt hàng thất bại, vui lòng thử lại", Toast.LENGTH_SHORT).show();
+                            }
+                        });
 //        }
+    }
+
+    private void updateAddressUi() {
+        if (selectedAddress == null) {
+            textViewNullAddress.setVisibility(View.VISIBLE);
+            textViewAddressName.setText("");
+            textViewAddressPhone.setText("");
+            textViewAddressDetail.setText("");
+            textViewWardPath.setText("");
+            return;
+        }
+
+        textViewNullAddress.setVisibility(View.GONE);
+        textViewAddressName.setText(selectedAddress.getName() == null ? "" : selectedAddress.getName());
+        textViewAddressPhone.setText(selectedAddress.getPhone() == null ? "" : selectedAddress.getPhone());
+        textViewAddressDetail.setText(selectedAddress.getAddress() == null ? "" : selectedAddress.getAddress());
+        textViewWardPath.setText(selectedAddress.getWard() == null ? "" : selectedAddress.getWard().getPath());
+    }
+
+    private int parseIntSafe(String value) {
+        if (value == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
     }
 
     private void scheduleNotification(int delayTime, String idRequest) {

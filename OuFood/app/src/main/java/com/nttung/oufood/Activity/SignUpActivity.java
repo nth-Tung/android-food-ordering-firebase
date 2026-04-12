@@ -111,7 +111,7 @@ public class SignUpActivity extends AppCompatActivity {
                         }
                     });
                 } else {
-                    Toast.makeText(getApplicationContext(), "Email đã tồn tại!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), task.getException().toString(), Toast.LENGTH_SHORT).show();
                 }
             }
         });

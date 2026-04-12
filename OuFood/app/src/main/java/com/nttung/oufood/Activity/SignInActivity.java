@@ -14,11 +14,8 @@ import androidx.appcompat.widget.AppCompatButton;
 
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.ValueEventListener;
 import com.nttung.oufood.Helper.Customer_LoadingDialog;
-import com.nttung.oufood.Class.User;
+import com.nttung.oufood.Helper.SessionManager;
 import com.nttung.oufood.R;
 import com.nttung.oufood.common.Common;
 
@@ -46,7 +43,7 @@ public class SignInActivity extends AppCompatActivity {
         tv_signupNow = findViewById(R.id.tv_SignupNow);
         checkBox = findViewById(R.id.checkbox_remember);
 
-        Paper.init(this);
+        SessionManager.init(this);
         loadingDialog = new Customer_LoadingDialog(this, null);
 
 
@@ -87,28 +84,21 @@ public class SignInActivity extends AppCompatActivity {
         FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).addOnCompleteListener(SignInActivity.this, task -> {
             if (task.isSuccessful()) {
                 if (FirebaseAuth.getInstance().getCurrentUser().isEmailVerified()) {
-
                     if (checkBox.isChecked()) {
                         Paper.book().write(Common.USERNAME_KEY, email);
-                        Paper.book().write(Common.PASSWORD_KEY, password);
+                    } else {
+                        Paper.book().delete(Common.USERNAME_KEY);
                     }
-
-                    String userUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
-
-                    Common.FIREBASE_DATABASE.getReference(Common.REF_USERS).child(userUid).addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-                            User user = snapshot.getValue(User.class);
-                            Common.CURRENTUSER = user;
-
-                            Intent homeIntent = new Intent(SignInActivity.this, HomeActivity.class);
-                            startActivity(homeIntent);
-                            finish();
+                    SessionManager.fetchUserFromFirebase(user -> {
+                        loadingDialog.dismiss();
+                        if (user == null) {
+                            Toast.makeText(SignInActivity.this, "Không tải được thông tin tài khoản", Toast.LENGTH_SHORT).show();
+                            return;
                         }
 
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError error) {
-                        }
+                        Intent homeIntent = new Intent(SignInActivity.this, HomeActivity.class);
+                        startActivity(homeIntent);
+                        finish();
                     });
                 } else {
                     loadingDialog.dismiss();
@@ -116,10 +106,8 @@ public class SignInActivity extends AppCompatActivity {
                     alert.setTitle("Thông báo");
                     alert.setMessage("Vui lòng xác thực tài khoản, trong email của bạn");
                     alert.setIcon(R.drawable.info_ic);
-
                     alert.setPositiveButton("OK", (dialog, which) -> {
                     });
-
                     alert.show();
                 }
             } else {

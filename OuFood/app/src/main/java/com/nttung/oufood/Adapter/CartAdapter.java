@@ -56,12 +56,14 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.Viewholder> {
 
     @Override
     public void onBindViewHolder(@NonNull CartAdapter.Viewholder holder, @SuppressLint("RecyclerView") int position) {
-        Common.FIREBASE_DATABASE.getReference(Common.REF_FOODS).child(items.get(position).getProductId()).addValueEventListener(new ValueEventListener() {
+        Common.FIREBASE_DATABASE.getReference(Common.REF_FOODS).child(items.get(position).getProductId()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 Food currentFood = snapshot.getValue(Food.class);
-                String pathURL = currentFood.getUrl();
-                Picasso.get().load(pathURL).fit().centerCrop().into(holder.pic);
+                if (currentFood != null && currentFood.getUrl() != null && !currentFood.getUrl().trim().isEmpty()) {
+                    String pathURL = currentFood.getUrl();
+                    Picasso.get().load(pathURL).fit().centerCrop().into(holder.pic);
+                }
             }
 
             @Override
@@ -102,11 +104,11 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.Viewholder> {
                 int quantity = Integer.parseInt(holder.textViewQuantity.getText().toString());
                 if (quantity > 1) {
                     quantity -= 1;
-                    new Database(context).updateQuantity(items.get(position).getProductId(), holder.textViewQuantity.getText().toString());
 //                    update quantiry to quantity_cart_item
                     holder.textViewQuantity.setText(String.valueOf(quantity));
 //                    update quantity to list_order
                     items.get(position).setQuantity(String.valueOf(quantity));
+                    new Database(context).updateQuantity(items.get(position).getProductId(), String.valueOf(quantity));
                     ((CartActivity) context).updateBill();
                 } else {
                     if (quantity == 1) {

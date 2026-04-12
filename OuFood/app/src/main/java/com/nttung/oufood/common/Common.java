@@ -27,7 +27,6 @@ public class Common {
     public static final String REF_REQUESTS = "Requests";
 
     public static final String USERNAME_KEY = "USER_NAME";
-    public static final String PASSWORD_KEY = "PASSWORD";
 
     public static final int TOP_BEST_SELLER = 6;
 

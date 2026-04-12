@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">OU Food</string>
+    <string name="app_name">OUFood</string>
     <string name="login">Đăng nhập</string>
     <string name="signup">Đăng ký</string>
     <string name="forgot_password">Quên mật khẩu</string>

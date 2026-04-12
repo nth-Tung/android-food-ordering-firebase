@@ -18,11 +18,10 @@ import com.nttung.oufood.Activity.ChangePasswordActivity;
 import com.nttung.oufood.Activity.EditAvatarActivity;
 import com.nttung.oufood.Activity.EditNameUserActivity;
 import com.nttung.oufood.Activity.EditPhoneUserActivity;
+import com.nttung.oufood.Helper.SessionManager;
 import com.nttung.oufood.Activity.SignInActivity;
 import com.nttung.oufood.R;
 import com.nttung.oufood.common.Common;
-
-import io.paperdb.Paper;
 
 
 public class AccountFragment extends Fragment {
@@ -54,32 +53,23 @@ public class AccountFragment extends Fragment {
         logout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Common.CURRENTUSER = null;
-                FirebaseAuth.getInstance().signOut();
-                Paper.clear(requireActivity());
+                SessionManager.init(requireContext());
+                SessionManager.clearSession();
                 startActivity(new Intent(requireActivity(), SignInActivity.class));
                 requireActivity().finish();
             }
         });
 
-
-        if (!Common.CURRENTUSER.getUrl().equals(" ")) {
-            Picasso.get().load(Common.CURRENTUSER.getUrl()).into(pic);
+        SessionManager.init(requireContext());
+        if (Common.CURRENTUSER == null) {
+            SessionManager.getCachedUser();
         }
+
+        renderUserInfo();
+
         buttonChangeImage.setOnClickListener(v -> {
-           startActivity(new Intent(requireActivity(), EditAvatarActivity.class));
+            startActivity(new Intent(requireActivity(), EditAvatarActivity.class));
         });
-
-        name.setText(Common.CURRENTUSER.getName());
-        String sPhone = Common.CURRENTUSER.getPhone();
-        sPhone = "*******" + sPhone.substring(sPhone.length() - 3);
-        phone.setText(sPhone);
-
-        String s = Common.CURRENTUSER.getEmail();
-        int index = s.indexOf("@");
-        String sEmail = s.substring(0, 1) + "*****" + s.substring(index - 1);
-
-        email.setText(sEmail);
 
         ic_next_name = view.findViewById(R.id.ic_next_name);
         ic_next_name.setOnClickListener(v -> {
@@ -102,8 +92,37 @@ public class AccountFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        phone.setText(Common.CURRENTUSER.getPhone());
-        name.setText(Common.CURRENTUSER.getName());
-        Picasso.get().load(Common.CURRENTUSER.getUrl()).into(pic);
+        renderUserInfo();
+    }
+
+    private void renderUserInfo() {
+        if (Common.CURRENTUSER == null) {
+            name.setText("");
+            phone.setText("");
+            email.setText("");
+            return;
+        }
+
+        String url = Common.CURRENTUSER.getUrl();
+        if (url != null && !url.trim().isEmpty()) {
+            Picasso.get().load(url).into(pic);
+        }
+
+        name.setText(Common.CURRENTUSER.getName() == null ? "" : Common.CURRENTUSER.getName());
+
+        String sPhone = Common.CURRENTUSER.getPhone();
+        if (sPhone != null && sPhone.length() > 3) {
+            phone.setText("*******" + sPhone.substring(sPhone.length() - 3));
+        } else {
+            phone.setText(sPhone == null ? "" : sPhone);
+        }
+
+        String s = Common.CURRENTUSER.getEmail();
+        if (s != null && s.contains("@") && s.length() > 2) {
+            int index = s.indexOf("@");
+            email.setText(s.substring(0, 1) + "*****" + s.substring(Math.max(index - 1, 1)));
+        } else {
+            email.setText(s == null ? "" : s);
+        }
     }
 }
