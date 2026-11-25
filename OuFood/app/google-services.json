@@ -13,7 +13,20 @@
           "package_name": "com.nttung.oufood"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "691747017923-0n2454g1nj5rkrigk7m6kgj8j7bto2al.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nttung.oufood",
+            "certificate_hash": "e08b2c4a4d6a961c73f0355b2e8c1a2867c3f25d"
+          }
+        },
+        {
+          "client_id": "691747017923-cs92o2qpm2n4q2haaai64938u91lka9a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBlZ9taxB_cCFUSOZVnMV5amUVozVOMmRk"
@@ -21,7 +34,41 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691747017923-cs92o2qpm2n4q2haaai64938u91lka9a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691747017923:android:a82cb1b4ad7e09568ffe76",
+        "android_client_info": {
+          "package_name": "com.nttung.oufood.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "691747017923-cs92o2qpm2n4q2haaai64938u91lka9a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlZ9taxB_cCFUSOZVnMV5amUVozVOMmRk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691747017923-cs92o2qpm2n4q2haaai64938u91lka9a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
